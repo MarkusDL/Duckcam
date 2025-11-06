@@ -53,37 +53,49 @@ duckcam/
 └── startup_script_setup.bash   # bash script to start server on startup
 ```
 
-## 🌐 API Endpoints
-### GET /image
-Captures a single image from the camera. You can optionally specify a Region of Interest (ROI) via query parameters:
-Query Parameters:
-```
-roi=x,y,w,h
-or
-x: Top-left x-coordinate
-y: Top-left y-coordinate
-w: Width of ROI
-h: Height of ROI
-```
-Example:
-```
-http://hostname/image?x=100&y=200&w=500&h=400
-```
-Returns a JPEG image; if a valid query parameter is provided, returns the cropped region.
 
-###GET /stream
+## 🌐 API Endpoints
+
+### `GET /image`
+
+Captures a single image from the camera. You can optionally specify a Region of Interest (ROI) via query parameters.
+
+**Query Parameters:**
+
+You can specify ROI either as a single string or as individual parameters:
+
+- `roi=x,y,w,h`  
+  **or**
+- `x`: Top-left x-coordinate  
+- `y`: Top-left y-coordinate  
+- `w`: Width of ROI  
+- `h`: Height of ROI
+
+**Example:**
+```
+[http://hostname/image?x=100&y=200&w=500&h=400](http://hostname/image?x=100&y=200&w=500&h=400)
+```
+**Response:**
+
+Returns a JPEG image. If a valid ROI is provided, the image will be cropped to the specified region.
+
+---
+
+### `GET /stream`
 
 Starts a live MJPEG stream from the camera.
-Optional Query Parameters:
-```
-width: Desired stream width
-height: Desired stream height
-```
 
-Example:
+**Optional Query Parameters:**
+
+- `width`: Desired stream width  
+- `height`: Desired stream height
+
+**Example:**
 ```
 http://hostname/stream?width=640&height=480
 ```
+**Response:**
+
 Returns a multipart MJPEG stream suitable for embedding in web dashboards or viewing in browsers.
 
 
