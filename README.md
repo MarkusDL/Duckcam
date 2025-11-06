@@ -24,7 +24,9 @@
 - Flask
 - Pillow
 
-##📂 Repository Structure
+---
+
+## 📂 Repository Structure
 ```
 duckcam/
 ├── main.py                     # Main Flask app
