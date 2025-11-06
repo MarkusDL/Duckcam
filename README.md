@@ -29,5 +29,15 @@
 git clone https://github.com/MarkusDL/duckcam.git
 cd duckcam
 pip install -r requirements.txt
+```
 
 ### Running the server
+```python
+python main.py
+```
+
+The server can also be set to start automatically by running the inlcuded bash file startup_script_setup.bash
+
+```bash
+sudo bash ./startup_script_setup.bash
+```
