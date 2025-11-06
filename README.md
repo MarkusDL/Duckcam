@@ -24,16 +24,6 @@
 - Flask
 - Pillow
 
----
-
-## 📂 Repository Structure
-```
-duckcam/
-├── main.py                     # Main Flask app
-├── requirements.txt            # Python dependencies
-├── README.md                   # Project documentation
-└── startup_script_setup.bash   # bash script to start server on startup
-```
 
 ### Installation
 ```bash
@@ -50,6 +40,17 @@ python main.py
 The server can also be set to start automatically by running the included bash file startup_script_setup.bash
 ```bash
 sudo bash ./startup_script_setup.bash
+```
+
+---
+
+## 📂 Repository Structure
+```
+duckcam/
+├── main.py                     # Main Flask app
+├── requirements.txt            # Python dependencies
+├── README.md                   # Project documentation
+└── startup_script_setup.bash   # bash script to start server on startup
 ```
 
 ## 🌐 API Endpoints
