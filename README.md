@@ -67,7 +67,7 @@ h: Height of ROI
 ```
 Example:
 ```
-http://duckcamXY/image?x=100&y=200&w=500&h=400
+http://hostname/image?x=100&y=200&w=500&h=400
 ```
 Returns a JPEG image; if a valid query parameter is provided, returns the cropped region.
 
@@ -82,7 +82,7 @@ height: Desired stream height
 
 Example:
 ```
-http://duckcamXY/stream?width=640&height=480
+http://hostname/stream?width=640&height=480
 ```
 Returns a multipart MJPEG stream suitable for embedding in web dashboards or viewing in browsers.
 
