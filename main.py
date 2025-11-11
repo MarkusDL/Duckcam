@@ -125,33 +125,41 @@ def get_image():
 
 @app.route("/stream")
 def stream():
-
     res = parse_res_from_request()
+    roi = parse_roi_from_request()  # Parse ROI from query parameters
 
     picam.stop()
     if res:
         width, height = res
-        config = picam.create_preview_configuration(main={"size": (width, height)})
+    elif roi:
+        width, height =  4056, 3040
     else:
         width, height = 1280, 720
-        config = picam.create_preview_configuration(main={"size": (width, height)})
+
+    config = picam.create_preview_configuration(main={"size": (width, height)})
     picam.configure(config)
     picam.start()
 
     def generate():
-
-        while True:   
-            
+        while True:
             arr = picam.capture_array("main")
+
+            # Apply ROI cropping if specified
+            if roi:
+                x, y, w, h = roi
+                arr = arr[y:y+h, x:x+w]
+
             img = Image.fromarray(arr).convert("RGB")
             buf = io.BytesIO()
             img.save(buf, format="JPEG", quality=70)
             frame = buf.getvalue()
             yield (b"--frame\r\n"
                    b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n")
-            
+
             time.sleep(0.033)  # Adjust frame rate as needed
+
     return Response(generate(), mimetype="multipart/x-mixed-replace; boundary=frame")
+
 
 @app.route("/markers")
 def get_markers():
@@ -169,7 +177,7 @@ def get_markers():
 
     # Step 2: Define tile size and loop over tiles
     tile_size = 1000  # Size of each tile
-    overlap_pct = 0.3  # 20% overlap
+    overlap_pct = 0.3  # 30% overlap
 
     # Calculate step size based on overlap
     step_size = int(tile_size * (1 - overlap_pct))
