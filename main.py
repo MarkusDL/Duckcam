@@ -4,6 +4,15 @@ from PIL import Image
 import io
 import atexit
 import time
+import numpy as np
+from ArUco import detect_aruco_markers, split_into_tiles, deduplicate_markers, get_marker_center
+import cv2
+import io
+from flask import jsonify
+import json
+import tempfile
+
+import gc
 
 app = Flask(__name__)
 
@@ -76,6 +85,7 @@ def parse_roi_from_request():
         )
     return (x, y, w, h)
 
+    
 @app.route("/image")
 def get_image():
     roi = parse_roi_from_request()
@@ -111,6 +121,8 @@ def get_image():
     buf.seek(0)
     return send_file(buf, mimetype="image/jpeg")
 
+
+
 @app.route("/stream")
 def stream():
 
@@ -140,6 +152,70 @@ def stream():
             
             time.sleep(0.033)  # Adjust frame rate as needed
     return Response(generate(), mimetype="multipart/x-mixed-replace; boundary=frame")
+
+@app.route("/markers")
+def get_markers():
+    import numpy as np
+
+    # Step 1: Capture image
+    picam.stop()
+    width, height = 4056, 3040  # You can change this to full resolution if needed
+    config = picam.create_preview_configuration(main={"size": (width, height)})
+    picam.configure(config)
+    picam.start()
+
+    arr = picam.capture_array("main")  # shape: (height, width, channels)
+    img_h, img_w = arr.shape[:2]
+
+    # Step 2: Define tile size and loop over tiles
+    tile_size = 1000  # Size of each tile
+    overlap_pct = 0.3  # 20% overlap
+
+    # Calculate step size based on overlap
+    step_size = int(tile_size * (1 - overlap_pct))
+
+    all_markers_list = []
+
+    for y in range(0, img_h - tile_size + 1, step_size):
+        for x in range(0, img_w - tile_size + 1, step_size):
+            tile = arr[y:y+tile_size, x:x+tile_size]
+
+            # Step 3: Detect markers in tile
+            ids, corners = detect_aruco_markers(tile)
+
+            # Skip if no markers found
+            if ids is None or len(ids) < 1:
+                continue
+
+            print(len(ids))
+
+            # Step 4: Collect marker data
+            for marker_id, inst_corners in zip(ids, corners):
+                offset_corners = inst_corners + np.array([x, y])
+                offset_center = get_marker_center(inst_corners) + np.array([x, y])
+
+                print(marker_id)
+                all_markers_list.append({
+                    "id": int(marker_id.item()),
+                    "center": offset_center.tolist(),
+                    "corners": offset_corners.tolist()
+                })
+
+    print(f"found {str(len(all_markers_list))} in tiles combined")
+    # Step 5: Deduplicate markers
+    final_markers = deduplicate_markers(all_markers_list)
+    print(f"of which {str(len(final_markers))} was unique")
+    
+    # Serialize to JSON and send as file
+    json_bytes = json.dumps(final_markers, indent=2).encode('utf-8')
+    buffer = io.BytesIO(json_bytes)
+    buffer.seek(0)
+
+    return Response(
+        buffer,
+        mimetype='application/json'
+    )
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000, threaded=True)

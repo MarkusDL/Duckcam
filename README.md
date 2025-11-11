@@ -27,6 +27,7 @@
 
 ### Installation
 ```bash
+sudo apt install python3-picamera2 python3-opencv python3-numpy python3-pil
 git clone https://github.com/MarkusDL/duckcam.git
 cd duckcam
 pip install -r requirements.txt
