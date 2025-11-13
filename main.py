@@ -100,6 +100,10 @@ def get_image():
     picam.start()
 
     arr = picam.capture_array("main")  # shape: (height, width, channels)
+    
+    # Flip horizontally in place
+    arr[:] = arr[:, ::-1, :]
+
     img_h, img_w = arr.shape[:2]
 
     if roi:
@@ -143,6 +147,8 @@ def stream():
     def generate():
         while True:
             arr = picam.capture_array("main")
+            # Flip horizontally in place
+            arr[:] = arr[:, ::-1, :]
 
             # Apply ROI cropping if specified
             if roi:
@@ -173,6 +179,8 @@ def get_markers():
     picam.start()
 
     arr = picam.capture_array("main")  # shape: (height, width, channels)
+    # Flip horizontally in place
+    arr[:] = arr[:, ::-1, :]
     img_h, img_w = arr.shape[:2]
 
     # Step 2: Define tile size and loop over tiles
