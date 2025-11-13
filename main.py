@@ -177,32 +177,39 @@ def get_markers():
 
     # Step 2: Define tile size and loop over tiles
     tile_size = 1000  # Size of each tile
-    overlap_pct = 0.3  # 30% overlap
+    overlap_pct = 0.5  # 50% overlap
 
     # Calculate step size based on overlap
     step_size = int(tile_size * (1 - overlap_pct))
 
     all_markers_list = []
+    
+    x_starts = list(range(0, img_w - tile_size + 1, step_size))
+    y_starts = list(range(0, img_h - tile_size + 1, step_size))
 
-    for y in range(0, img_h - tile_size + 1, step_size):
-        for x in range(0, img_w - tile_size + 1, step_size):
-            tile = arr[y:y+tile_size, x:x+tile_size]
+    # Ensure rightmost tiles are included
+    if x_starts[-1] + tile_size < img_w:
+        x_starts.append(img_w - tile_size)
 
-            # Step 3: Detect markers in tile
+    # Ensure bottommost tiles are included
+    if y_starts[-1] + tile_size < img_h:
+        y_starts.append(img_h - tile_size)
+
+    for y_idx, y in enumerate(y_starts):
+        for x_idx, x in enumerate(x_starts):
+            tile = frame[y:y + tile_size, x:x + tile_size]
+
+            # Draw tile boundary
+            tile_color = get_linear_tile_color(x_idx, y_idx, max_x_index, max_y_index)
+            cv2.rectangle(draw_frame , (x, y), (x + tile_size, y + tile_size), color=tile_color, thickness=2)
+
             ids, corners = detect_aruco_markers(tile)
-
-            # Skip if no markers found
             if ids is None or len(ids) < 1:
                 continue
 
-            print(len(ids))
-
-            # Step 4: Collect marker data
             for marker_id, inst_corners in zip(ids, corners):
                 offset_corners = inst_corners + np.array([x, y])
                 offset_center = get_marker_center(inst_corners) + np.array([x, y])
-
-                print(marker_id)
                 all_markers_list.append({
                     "id": int(marker_id.item()),
                     "center": offset_center.tolist(),
