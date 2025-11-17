@@ -35,20 +35,40 @@ atexit.register(picam.stop)
 
 
 def create_zip_of_images(image, squares):
-    # Create an in-memory ZIP file
     zip_buffer = io.BytesIO()
+    h, w = image.shape[:2]
+
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         for marker_id, data in squares.items():
             square_2d = np.array(data["square_2d"], dtype=np.float32)
-            dst = np.array([[0, 0], [499, 0], [499, 499], [0, 499]], dtype=np.float32)
-            M = cv2.getPerspectiveTransform(square_2d, dst)
-            warped = cv2.warpPerspective(image, M, (500, 500))
-          
+
+            # Clip points to image bounds
+            clipped = np.clip(square_2d, [0, 0], [w - 1, h - 1])
+
+            # Compute visible area
+            min_x, min_y = clipped[:, 0].min(), clipped[:, 1].min()
+            max_x, max_y = clipped[:, 0].max(), clipped[:, 1].max()
+            visible_width = max_x - min_x
+            visible_height = max_y - min_y
+
+            # Scale destination size
+            orig_width = max(square_2d[:, 0]) - min(square_2d[:, 0])
+            orig_height = max(square_2d[:, 1]) - min(square_2d[:, 1])
+            scale_x = visible_width / orig_width if orig_width > 0 else 1
+            scale_y = visible_height / orig_height if orig_height > 0 else 1
+            new_width = max(1, int(500 * scale_x))
+            new_height = max(1, int(500 * scale_y))
+
+            dst = np.array([[0, 0], [new_width - 1, 0], [new_width - 1, new_height - 1], [0, new_height - 1]], dtype=np.float32)
+
+            # Perspective transform
+            M = cv2.getPerspectiveTransform(clipped, dst)
+            warped = cv2.warpPerspective(image, M, (new_width, new_height))
+
             # Convert BGR to RGB
             warped_rgb = cv2.cvtColor(warped, cv2.COLOR_BGR2RGB)
 
-
-            # Encode image to JPEG in memory
+            # Encode and add to ZIP
             _, img_bytes = cv2.imencode('.jpg', warped_rgb)
             filename = f"{marker_id}_{datetime.now().strftime('%Y_%m_%d_%H-%M-%S')}.jpg"
             zip_file.writestr(filename, img_bytes.tobytes())
@@ -289,18 +309,13 @@ def get_markers():
 
     
     # Get hostname of the device making the request
-    client_host = request.remote_addr  # IP address
-    try:
-        # Resolve hostname from IP (optional)
-        client_hostname = socket.gethostbyaddr(client_host)[0]
-    except socket.herror:
-        client_hostname = client_host  # fallback to IP
+    server_hostname = socket.gethostname()
 
     # Timestamp in required format
     timestamp = datetime.now().strftime('%Y_%m_%d_%H-%M-%S')
 
     # Build filename
-    filename = f"{client_hostname}_{timestamp}.zip"
+    filename = f"{server_hostname}_{timestamp}.zip"
 
 
     zip_buffer = create_zip_of_images(arr, squares)
