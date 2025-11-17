@@ -282,7 +282,7 @@ def get_markers():
     buffer = io.BytesIO(json_bytes)
     buffer.seek(0)
 
-    zip_buffer = create_zip_of_images(frame, squares)
+    zip_buffer = create_zip_of_images(arr, squares)
     return Response(zip_buffer, mimetype='application/zip',
                     headers={"Content-Disposition": "attachment; filename=markers.zip"})
 
