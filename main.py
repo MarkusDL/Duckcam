@@ -43,7 +43,8 @@ def create_zip_of_images(frame, squares):
                 clipped = np.array(square_2d, dtype=np.float32)
 
                 roi = square_info.get("roi", [])
-                w, h = (int(roi[2]), int(roi[3])) if roi and len(roi) == 4 else (500, 500)
+                # (int(roi[2]), int(roi[3])) if roi and len(roi) == 4 else
+                w, h =  (500, 500)
 
                 dst = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]], dtype=np.float32)
 
