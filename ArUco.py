@@ -46,7 +46,7 @@ def infer_square_for_group(markers, default_edge=0.6):
         origin = poses[0]["pos"]
         x_axis = poses[0]["R"][:, 1]
         # Use marker's Y as your X
-        y_axis = poses[0]["R"][:, o]
+        y_axis = poses[0]["R"][:, 0]
         # Use marker's X as your Y
         return build_square_from_axes(origin, x_axis, y_axis, default_edge, default_edge)
 
@@ -77,7 +77,7 @@ def infer_square_for_group(markers, default_edge=0.6):
         # Compute bounding box in local plane
         origin = positions[0]
         R = poses[0]["R"]
-        x_axis, y_axis = R[:, 0], R[:, 1]
+        x_axis, y_axis = R[:, 1], R[:, 0]
 
         # Project other markers onto local axes
         coords = [(np.dot(p - origin, x_axis), np.dot(p - origin, y_axis)) for p in positions]
@@ -89,7 +89,7 @@ def infer_square_for_group(markers, default_edge=0.6):
         # Case 4: Four markers → fully constrained
         positions = [p["pos"] for p in poses]
         R = poses[0]["R"]
-        x_axis, y_axis = R[:, 0], R[:, 1]
+        x_axis, y_axis = R[:, 1], R[:, 0]
 
         # Compute extents
         origin = min(positions, key=lambda p: np.dot(p, x_axis) + np.dot(p, y_axis))
