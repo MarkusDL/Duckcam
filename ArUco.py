@@ -55,7 +55,7 @@ def infer_square_for_group(markers, default_edge=0.550):
         # Use marker's Y as your X
         y_axis = poses[0]["R"][:, 1]
         # Use marker's X as your Y
-        return build_square_from_axes(origin, x_axis, y_axis, default_edge, default_edge)
+        return build_square_from_axes(origin, x_axis, y_axis, -default_edge, -default_edge)
 
     elif len(poses) == 2:
         print("found square with only two markers")
@@ -75,9 +75,9 @@ def infer_square_for_group(markers, default_edge=0.550):
         y_axis = R1[:, 0]
 
         if abs(dot_x) > 0.9:  # Same edge
-            return build_square_from_axes(origin, x_axis, y_axis, dist, default_edge)
+            return build_square_from_axes(origin, x_axis, y_axis, -dist, -default_edge)
         else:  # Perpendicular
-            return build_square_from_axes(origin, x_axis, y_axis, dist, dist)
+            return build_square_from_axes(origin, x_axis, y_axis, -dist, -dist)
 
     elif len(poses) == 3:
         positions = [p["pos"] for p in poses]
