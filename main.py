@@ -238,7 +238,7 @@ def get_markers():
     
     
     # Infer squares using pose-based logic
-    squares = infer_squares(final_markers, default_edge=0.6)  # 0.6 meters = 600 mm
+    squares = infer_squares(final_markers, default_edge=0.2)  # 0.2 meters = 200 mm
 
     
     # Add 2D projection and ROI
