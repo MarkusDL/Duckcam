@@ -7,57 +7,58 @@ from collections import defaultdict
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_50)
 parameters = aruco.DetectorParameters()
 
-def get_angle(corners):
-    """Compute orientation angle of a marker from its first two corners."""
-    v = np.array(corners[1]) - np.array(corners[0])
-    return np.degrees(np.arctan2(v[1], v[0]))
+def get_local_axes(corners):
+    """Compute local X and Y axes from marker corners."""
+    p0, p1 = np.array(corners[0]), np.array(corners[1])
+    x_axis = p1 - p0
+    x_axis /= np.linalg.norm(x_axis)
+    y_axis = np.array([-x_axis[1], x_axis[0]])  # rotate 90°
+    return x_axis, y_axis
 
-def is_perpendicular(angle1, angle2, tol=15):
-    """Check if two angles are approximately perpendicular."""
-    diff = abs(angle1 - angle2) % 180
-    return abs(diff - 90) < tol
-
-def approximate_square(center, side_len=600):
-    """Approximate a square centered at given point."""
-    cx, cy = center
+def build_square_one_marker(marker, side_len=50):
+    """Square with marker as one corner, aligned to marker axes."""
+    center = np.array(marker["center"])
+    x_axis, y_axis = get_local_axes(marker["corners"])
+    # Marker is corner → extend along axes
     return [
-        (cx - side_len/2, cy - side_len/2),
-        (cx + side_len/2, cy - side_len/2),
-        (cx + side_len/2, cy + side_len/2),
-        (cx - side_len/2, cy + side_len/2)
+        center.tolist(),
+        (center + x_axis * side_len).tolist(),
+        (center + x_axis * side_len + y_axis * side_len).tolist(),
+        (center + y_axis * side_len).tolist()
     ]
 
 def build_square_two_markers(m1, m2):
-    """Build square from two markers."""
+    """Square with edge defined by two markers, aligned to m1 axes."""
     c1, c2 = np.array(m1["center"]), np.array(m2["center"])
-    angle1, angle2 = get_angle(m1["corners"]), get_angle(m2["corners"])
-    dist = np.linalg.norm(c2 - c1)
-
-    # Midpoint and orientation
-    midpoint = (c1 + c2) / 2
-    if is_perpendicular(angle1, angle2):
-        # Adjacent sides: use dist as side length
-        side_len = dist
-    else:
-        # Opposite sides: use dist as diagonal
-        side_len = dist / np.sqrt(2)
-
-    # Compute square corners aligned with angle1
-    theta = np.radians(angle1)
-    dx, dy = np.cos(theta), np.sin(theta)
-    half = side_len / 2
-    # Rotate 90° for perpendicular axis
-    perp_dx, perp_dy = -dy, dx
-
+    x_axis, y_axis = get_local_axes(m1["corners"])
+    side_len = np.linalg.norm(c2 - c1)
+    # First marker is corner, second defines edge along x_axis
     return [
-        (midpoint[0] - dx*half - perp_dx*half, midpoint[1] - dy*half - perp_dy*half),
-        (midpoint[0] + dx*half - perp_dx*half, midpoint[1] + dy*half - perp_dy*half),
-        (midpoint[0] + dx*half + perp_dx*half, midpoint[1] + dy*half + perp_dy*half),
-        (midpoint[0] - dx*half + perp_dx*half, midpoint[1] - dy*half + perp_dy*half)
+        c1.tolist(),
+        (c1 + x_axis * side_len).tolist(),
+        (c1 + x_axis * side_len + y_axis * side_len).tolist(),
+        (c1 + y_axis * side_len).tolist()
+    ]
+
+def build_square_three_or_four(markers):
+    """Use first marker as reference, assume 90° rotations around square."""
+    # Sort markers by ID or position for consistency
+    markers = sorted(markers, key=lambda m: m["id"])
+    m1 = markers[0]
+    c1 = np.array(m1["center"])
+    x_axis, y_axis = get_local_axes(m1["corners"])
+    # Estimate side length from nearest neighbor
+    distances = [np.linalg.norm(np.array(m["center"]) - c1) for m in markers[1:]]
+    side_len = min(distances) if distances else 50
+    return [
+        c1.tolist(),
+        (c1 + x_axis * side_len).tolist(),
+        (c1 + x_axis * side_len + y_axis * side_len).tolist(),
+        (c1 + y_axis * side_len).tolist()
     ]
 
 def infer_squares(final_markers, default_side_len=50):
-    """Infer squares for each marker ID from 1–4 markers."""
+    """Infer squares for each marker ID using local axes."""
     marker_groups = defaultdict(list)
     for m in final_markers:
         marker_groups[m["id"]].append(m)
@@ -65,16 +66,11 @@ def infer_squares(final_markers, default_side_len=50):
     squares = {}
     for marker_id, group in marker_groups.items():
         if len(group) == 1:
-            # Approximate square
-            squares[marker_id] = approximate_square(group[0]["center"], default_side_len)
+            squares[marker_id] = build_square_one_marker(group[0], default_side_len)
         elif len(group) == 2:
             squares[marker_id] = build_square_two_markers(group[0], group[1])
-        elif len(group) >= 3:
-            # Use convex hull of centers for 3 or 4 markers
-            pts = np.array([m["center"] for m in group])
-            hull = pts[np.argsort(np.arctan2(pts[:,1]-pts[:,1].mean(), pts[:,0]-pts[:,0].mean()))]
-            squares[marker_id] = hull.tolist()
-        # If more than 4 markers, still return hull
+        else:
+            squares[marker_id] = build_square_three_or_four(group)
     return squares
 
 def get_marker_center(corners):
