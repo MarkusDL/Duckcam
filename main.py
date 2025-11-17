@@ -190,7 +190,7 @@ def get_markers():
     img_h, img_w = arr.shape[:2]
 
     # Step 2: Define tile size and loop over tiles
-    tile_size = 1000  # Size of each tile
+    tile_size = 500  # Size of each tile
     overlap_pct = 0.5  # 50% overlap
 
     # Calculate step size based on overlap
