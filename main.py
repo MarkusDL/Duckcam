@@ -304,8 +304,13 @@ def get_markers():
 
 
     zip_buffer = create_zip_of_images(arr, squares)
-    return Response(zip_buffer, mimetype='application/zip',
-                    headers={"Content-Disposition": "attachment; filename={filename}"})
+    
+    return Response(
+            zip_buffer,
+            mimetype='application/zip',
+            headers={"Content-Disposition": f"attachment; filename={filename}"}
+        )
+
 
 
     #return Response(
