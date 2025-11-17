@@ -34,47 +34,29 @@ picam.start()
 atexit.register(picam.stop)
 
 
-def create_zip_of_images(image, squares):
+def create_zip_of_images(frame, squares):
     zip_buffer = io.BytesIO()
-    h, w = image.shape[:2]
+    with zipfile.ZipFile(zip_buffer, "w") as zf:
+        for square_id, square_info in squares.items():
+            square_2d = square_info.get("square_2d", [])
+            if len(square_2d) == 4:
+                clipped = np.array(square_2d, dtype=np.float32)
 
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        for marker_id, data in squares.items():
-            square_2d = np.array(data["square_2d"], dtype=np.float32)
+                roi = square_info.get("roi", [])
+                w, h = (int(roi[2]), int(roi[3])) if roi and len(roi) == 4 else (500, 500)
 
-            # Clip points to image bounds
-            clipped = np.clip(square_2d, [0, 0], [w - 1, h - 1])
+                dst = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]], dtype=np.float32)
 
-            # Compute visible area
-            min_x, min_y = clipped[:, 0].min(), clipped[:, 1].min()
-            max_x, max_y = clipped[:, 0].max(), clipped[:, 1].max()
-            visible_width = max_x - min_x
-            visible_height = max_y - min_y
-
-            # Scale destination size
-            orig_width = max(square_2d[:, 0]) - min(square_2d[:, 0])
-            orig_height = max(square_2d[:, 1]) - min(square_2d[:, 1])
-            scale_x = visible_width / orig_width if orig_width > 0 else 1
-            scale_y = visible_height / orig_height if orig_height > 0 else 1
-            new_width = max(1, int(500 * scale_x))
-            new_height = max(1, int(500 * scale_y))
-
-            dst = np.array([[0, 0], [new_width - 1, 0], [new_width - 1, new_height - 1], [0, new_height - 1]], dtype=np.float32)
-
-            # Perspective transform
-            M = cv2.getPerspectiveTransform(clipped, dst)
-            warped = cv2.warpPerspective(image, M, (new_width, new_height))
-
-            # Convert BGR to RGB
-            warped_rgb = cv2.cvtColor(warped, cv2.COLOR_BGR2RGB)
-
-            # Encode and add to ZIP
-            _, img_bytes = cv2.imencode('.jpg', warped_rgb)
-            filename = f"{marker_id}_{datetime.now().strftime('%Y_%m_%d_%H-%M-%S')}.jpg"
-            zip_file.writestr(filename, img_bytes.tobytes())
-
+                try:
+                    M = cv2.getPerspectiveTransform(clipped, dst)
+                    warped = cv2.warpPerspective(frame, M, (w, h))
+                    _, buf = cv2.imencode(".png", warped)
+                    zf.writestr(f"square_{square_id}.png", buf.tobytes())
+                except cv2.error as e:
+                    print(f"Skipping square {square_id}: {e}")
     zip_buffer.seek(0)
     return zip_buffer
+
 
 def parse_res_from_request():
     # Accept either ?res=w,h or ?w=&h=
