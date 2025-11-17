@@ -240,6 +240,20 @@ def get_markers():
     # Infer squares using pose-based logic
     squares = infer_squares(final_markers, default_edge=0.6)  # 0.6 meters = 600 mm
 
+    
+    # Add 2D projection and ROI
+    for marker_id, data in squares.items():
+        square_3d = data["square_3d"]
+        square_2d = project_square_to_image(square_3d, camera_matrix, dist_coeffs)
+        squares[marker_id]["square_2d"] = square_2d
+        squares[marker_id]["roi"] = [
+            min(p[0] for p in square_2d),
+            min(p[1] for p in square_2d),
+            max(p[0] for p in square_2d) - min(p[0] for p in square_2d),
+            max(p[1] for p in square_2d) - min(p[1] for p in square_2d)
+        ]
+
+
     result = {
         "markers": final_markers,
         "squares": squares
