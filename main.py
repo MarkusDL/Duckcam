@@ -272,7 +272,7 @@ def get_markers():
 
         center = np.mean(square_3d, axis=0)
         # Offset points toward center
-        adjusted_square = [center + (p - center) * (1 - 0.15) for p in square_3d]
+        adjusted_square = [center + (p - center) * (1 - 0.17) for p in square_3d]
 
         square_2d = project_square_to_image(adjusted_square, camera_matrix, dist_coeffs)
         squares[marker_id]["square_2d"] = square_2d
