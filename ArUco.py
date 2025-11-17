@@ -9,17 +9,26 @@ parameters = aruco.DetectorParameters()
 
 def get_local_axes(corners):
     """Compute local X and Y axes from marker corners."""
+    if not corners or len(corners) < 2:
+        raise ValueError(f"Invalid corners: {corners}")
+    # Normalize format: if nested [[[x,y],...]], flatten it
+    if isinstance(corners[0][0], (list, tuple)):
+        corners = corners[0]
     p0, p1 = np.array(corners[0]), np.array(corners[1])
     x_axis = p1 - p0
-    x_axis /= np.linalg.norm(x_axis)
+    norm = np.linalg.norm(x_axis)
+    if norm == 0:
+        raise ValueError("Zero-length axis vector")
+    x_axis /= norm
     y_axis = np.array([-x_axis[1], x_axis[0]])  # rotate 90°
     return x_axis, y_axis
 
-def build_square_one_marker(marker, side_len=50):
+
+
+def build_square_one_marker(marker, side_len=600):
     """Square with marker as one corner, aligned to marker axes."""
     center = np.array(marker["center"])
     x_axis, y_axis = get_local_axes(marker["corners"])
-    # Marker is corner → extend along axes
     return [
         center.tolist(),
         (center + x_axis * side_len).tolist(),
@@ -32,7 +41,6 @@ def build_square_two_markers(m1, m2):
     c1, c2 = np.array(m1["center"]), np.array(m2["center"])
     x_axis, y_axis = get_local_axes(m1["corners"])
     side_len = np.linalg.norm(c2 - c1)
-    # First marker is corner, second defines edge along x_axis
     return [
         c1.tolist(),
         (c1 + x_axis * side_len).tolist(),
@@ -40,9 +48,10 @@ def build_square_two_markers(m1, m2):
         (c1 + y_axis * side_len).tolist()
     ]
 
+
+
 def build_square_three_or_four(markers):
     """Use first marker as reference, assume 90° rotations around square."""
-    # Sort markers by ID or position for consistency
     markers = sorted(markers, key=lambda m: m["id"])
     m1 = markers[0]
     c1 = np.array(m1["center"])
@@ -57,6 +66,8 @@ def build_square_three_or_four(markers):
         (c1 + y_axis * side_len).tolist()
     ]
 
+
+
 def infer_squares(final_markers, default_side_len=50):
     """Infer squares for each marker ID using local axes."""
     marker_groups = defaultdict(list)
@@ -65,13 +76,21 @@ def infer_squares(final_markers, default_side_len=50):
 
     squares = {}
     for marker_id, group in marker_groups.items():
-        if len(group) == 1:
-            squares[marker_id] = build_square_one_marker(group[0], default_side_len)
-        elif len(group) == 2:
-            squares[marker_id] = build_square_two_markers(group[0], group[1])
-        else:
-            squares[marker_id] = build_square_three_or_four(group)
+        # Filter out invalid markers
+        valid_group = [m for m in group if m.get("corners") and len(m["corners"]) >= 2]
+        if not valid_group:
+            continue
+        try:
+            if len(valid_group) == 1:
+                squares[marker_id] = build_square_one_marker(valid_group[0], default_side_len)
+            elif len(valid_group) == 2:
+                squares[marker_id] = build_square_two_markers(valid_group[0], valid_group[1])
+            else:
+                squares[marker_id] = build_square_three_or_four(valid_group)
+        except ValueError as e:
+            print(f"Skipping marker {marker_id}: {e}")
     return squares
+
 
 def get_marker_center(corners):
     """Calculate the center of the marker from its corners."""
