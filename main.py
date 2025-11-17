@@ -213,7 +213,7 @@ def get_markers():
 
             for marker_id, inst_corners in zip(ids, corners):
                 offset_corners = inst_corners[0] + np.array([x, y])
-                offset_center = get_marker_center(inst_corners) + np.array([x, y])
+                offset_center = get_marker_center(offset_corners)
                 all_markers_list.append({
                     "id": int(marker_id.item()),
                     "center": offset_center.tolist(),
