@@ -6,6 +6,7 @@ import atexit
 import time
 import numpy as np
 from ArUco import *
+import aruco
 import cv2
 import io
 from flask import jsonify
@@ -15,6 +16,11 @@ import tempfile
 import gc
 
 app = Flask(__name__)
+
+camera_matrix = np.array([[5160, 0., 2028],
+                          [  0., 5160, 1520],
+                          [  0., 0., 1.        ]], dtype=np.float32)
+dist_coeffs = np.array([[ 0, 0, 0, 0, 0]], dtype=np.float32)  # Assuming no distortion
 
 # Initialize and start the camera once
 picam = Picamera2()
@@ -208,16 +214,19 @@ def get_markers():
             tile = arr[y:y + tile_size, x:x + tile_size]
 
             ids, corners = detect_aruco_markers(tile)
+            rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers(corners, 0.05, camera_matrix, dist_coeffs)
             if ids is None or len(ids) < 1:
                 continue
 
-            for marker_id, inst_corners in zip(ids, corners):
+            for marker_id, inst_corners, rvec, tvec in zip(ids, corners, rvecs, tvecs):
                 offset_corners = inst_corners[0] + np.array([x, y])
                 offset_center = get_marker_center(offset_corners)
                 all_markers_list.append({
                     "id": int(marker_id.item()),
                     "center": offset_center.tolist(),
-                    "corners": offset_corners.tolist()
+                    "corners": offset_corners.tolist(),
+                    "r_vec": rvec.tolist(),
+                    "t_vec": tvec.tolist(),
                 })
 
     print(f"found {str(len(all_markers_list))} in tiles combined")
