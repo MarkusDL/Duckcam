@@ -13,7 +13,7 @@ import cv2
 def order_points(points):
     center = np.mean(points, axis=0)
     pts_sorted = sorted(points, key=lambda p: np.arctan2(p[1]-center[1], p[0]-center[0]))
-    return pts_sorted
+    return pts_sorted.tolist()
 
     
 def project_square_to_image(square_3d, camera_matrix, dist_coeffs):
