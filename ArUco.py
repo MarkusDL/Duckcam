@@ -51,39 +51,26 @@ def infer_square_for_group(markers, default_edge=0.550):
         return build_square_from_axes(origin, x_axis, y_axis, default_edge, default_edge)
 
     elif len(poses) == 2:
-        # Case 2: Two markers
         p1, p2 = poses[0]["pos"], poses[1]["pos"]
-        R1, R2 = poses[0]["R"], poses[1]["R"]
-        dist = np.linalg.norm(p2 - p1)
-
-        # Check orientation difference
-        dot_x = np.dot(R1[:, 0], R2[:, 0])
-        dot_y = np.dot(R1[:, 1], R2[:, 1])
-
         origin = p1
-        # Use marker's Y as your X
-        x_axis = R1[:, 1]
-        # Use marker's X as your Y
-        y_axis = R1[:, 0]
-
-        if abs(dot_x) > 0.9:  # Same edge
-            return build_square_from_axes(origin, x_axis, y_axis, dist, default_edge)
-        else:  # Perpendicular
-            return build_square_from_axes(origin, x_axis, y_axis, dist, dist)
-
-    elif len(poses) == 3:
-        # Case 3: Three markers → best-fit square
-        positions = [p["pos"] for p in poses]
-        # Compute bounding box in local plane
-        origin = positions[0]
-        R = poses[0]["R"]
-        x_axis, y_axis = R[:, 1], R[:, 0]
-
-        # Project other markers onto local axes
-        coords = [(np.dot(p - origin, x_axis), np.dot(p - origin, y_axis)) for p in positions]
-        max_x = max(c[0] for c in coords)
-        max_y = max(c[1] for c in coords)
-        return build_square_from_axes(origin, x_axis, y_axis, max_x, max_y)
+        x_axis = (p2 - p1) / np.linalg.norm(p2 - p1)  # Direction between markers
+        z_axis = poses[0]["R"][:, 2]  # Marker’s normal
+        y_axis = np.cross(z_axis, x_axis)
+        y_axis /= np.linalg.norm(y_axis)
+        return build_square_from_axes(origin, x_axis, y_axis, np.linalg.norm(p2 - p1), default_edge)
+        elif len(poses) == 3:
+            # Case 3: Three markers → best-fit square
+            positions = [p["pos"] for p in poses]
+            # Compute bounding box in local plane
+            origin = positions[0]
+            R = poses[0]["R"]
+            x_axis, y_axis = R[:, 1], R[:, 0]
+    
+            # Project other markers onto local axes
+            coords = [(np.dot(p - origin, x_axis), np.dot(p - origin, y_axis)) for p in positions]
+            max_x = max(c[0] for c in coords)
+            max_y = max(c[1] for c in coords)
+            return build_square_from_axes(origin, x_axis, y_axis, max_x, max_y)
 
     else:
         # Case 4: Four markers → fully constrained
