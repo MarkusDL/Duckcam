@@ -275,7 +275,7 @@ def get_markers():
         adjusted_square = [center + (p - center) * (1 - 0.17) for p in square_3d]
 
         square_2d = project_square_to_image(adjusted_square, camera_matrix, dist_coeffs)
-        squares[marker_id]["square_2d"] = square_2d
+        squares[marker_id]["square_2d"] = [p.tolist() for p in square_2d]
         squares[marker_id]["roi"] = [
             min(p[0] for p in square_2d),
             min(p[1] for p in square_2d),
@@ -288,7 +288,7 @@ def get_markers():
         "markers": final_markers,
         "squares": squares
     }
-    json_bytes = json.dumps(result, indent=2).encode('utf-8')
+    json_bytes = json.dumps(result, indent=2, default=lambda o: o.tolist() if hasattr(o, 'tolist') else o).encode('utf-8')
     buffer = io.BytesIO(json_bytes)
     buffer.seek(0)
 
