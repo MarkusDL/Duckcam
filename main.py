@@ -226,7 +226,7 @@ def get_markers():
                     "center": offset_center.tolist(),
                     "corners": offset_corners.tolist(),
                     "r_vec": rvec.tolist(),
-                    "t_vec": tvec.tolist(),
+                    "t_vec": tvec.tolist()
                 })
 
     print(f"found {str(len(all_markers_list))} in tiles combined")
