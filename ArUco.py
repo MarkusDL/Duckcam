@@ -24,9 +24,9 @@ def build_square_from_axes(origin, x_axis, y_axis, size_x, size_y):
     """Build square corners in 3D given origin and axes."""
     return [
         origin.tolist(),
-        (origin - x_axis * size_x).tolist(),
-        (origin - x_axis * size_x - y_axis * size_y).tolist(),
-        (origin - y_axis * size_y).tolist()
+        (origin + x_axis * size_x).tolist(),
+        (origin + x_axis * size_x + y_axis * size_y).tolist(),
+        (origin + y_axis * size_y).tolist()
     ]
 
 def infer_square_for_group(markers, default_edge=0.550):
@@ -42,15 +42,17 @@ def infer_square_for_group(markers, default_edge=0.550):
         poses.append({"pos": tvec, "R": R})
 
     if len(poses) == 1:
+        print("found square with only one marker")
         # Case 1: Single marker
         origin = poses[0]["pos"]
         x_axis = poses[0]["R"][:, 0]
         # Use marker's Y as your X
         y_axis = poses[0]["R"][:, 1]
         # Use marker's X as your Y
-        return build_square_from_axes(origin, x_axis, y_axis, default_edge, default_edge)
+        return build_square_from_axes(origin, x_axis, y_axis, -default_edge, -default_edge)
 
     elif len(poses) == 2:
+        print("found square with only two markers")
         # Case 2: Two markers
         p1, p2 = poses[0]["pos"], poses[1]["pos"]
         R1, R2 = poses[0]["R"], poses[1]["R"]
