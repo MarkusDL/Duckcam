@@ -234,7 +234,10 @@ def get_markers():
     final_markers = deduplicate_markers(all_markers_list)
     print(f"of which {str(len(final_markers))} was unique")
     
-    squares = infer_squares(final_markers, default_side_len=50)
+    
+    # Infer squares using pose-based logic
+    squares = infer_squares(final_markers, default_edge=0.6)  # 0.6 meters = 600 mm
+
     result = {
         "markers": final_markers,
         "squares": squares
