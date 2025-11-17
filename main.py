@@ -40,16 +40,13 @@ def create_zip_of_images(frame, squares):
         for square_id, square_info in squares.items():
             square_2d = square_info.get("square_2d", [])
             if len(square_2d) == 4:
-                clipped = np.array(square_2d, dtype=np.float32)
-
                 roi = square_info.get("roi", [])
                 # (int(roi[2]), int(roi[3])) if roi and len(roi) == 4 else
                 w, h =  (500, 500)
-
                 dst = np.array([[0, 0], [w - 1, 0], [w - 1, h - 1], [0, h - 1]], dtype=np.float32)
 
                 try:
-                    M = cv2.getPerspectiveTransform(clipped, dst)
+                    M = cv2.getPerspectiveTransform(square_2d, dst)
                     warped = cv2.warpPerspective(frame, M, (w, h))
                     warped_rgg =cv2.cvtColor(warped, cv2.COLOR_BGR2RGB)
                     _, buf = cv2.imencode(".jpg", warped_rgg)
