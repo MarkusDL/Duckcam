@@ -231,7 +231,7 @@ def get_markers():
         "squares": squares
     }
     json_bytes = json.dumps(result, indent=2).encode('utf-8')
-        buffer = io.BytesIO(json_bytes)
+    buffer = io.BytesIO(json_bytes)
     buffer.seek(0)
 
 
