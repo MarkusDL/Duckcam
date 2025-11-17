@@ -13,7 +13,7 @@ import cv2
 def project_square_to_image(square_3d, camera_matrix, dist_coeffs):
     pts = np.array(square_3d, dtype=np.float32)
     img_pts, _ = cv2.projectPoints(pts, np.zeros(3), np.zeros(3), camera_matrix, dist_coeffs)
-    return img_pts.reshape(-1, 2).tolist(
+    return img_pts.reshape(-1, 2).tolist()
 
         
 def get_rotation_matrix(rvec):
