@@ -25,7 +25,7 @@ def build_square_from_axes(origin, x_axis, y_axis, size_x, size_y):
     return [
         origin.tolist(),
         (origin - x_axis * size_x).tolist(),
-        (origin - x_axis * size_x + y_axis * size_y).tolist(),
+        (origin - x_axis * size_x - y_axis * size_y).tolist(),
         (origin - y_axis * size_y).tolist()
     ]
 
