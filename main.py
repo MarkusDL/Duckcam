@@ -6,7 +6,7 @@ import atexit
 import time
 import numpy as np
 from ArUco import *
-import aruco
+import cv2.aruco as aruco
 import cv2
 import io
 from flask import jsonify
