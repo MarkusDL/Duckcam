@@ -29,7 +29,7 @@ def build_square_from_axes(origin, x_axis, y_axis, size_x, size_y):
         (origin + y_axis * size_y).tolist()
     ]
 
-def infer_square_for_group(markers, default_edge=0.6):
+def infer_square_for_group(markers, default_edge=0.550):
     """
     Infer square for a group of markers with same ID.
     Handles 1–4 markers.
