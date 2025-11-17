@@ -89,7 +89,7 @@ def infer_square_for_group(markers, default_edge=0.550):
         # Case 4: Four markers → fully constrained
         positions = [p["pos"] for p in poses]
         R = poses[0]["R"]
-        x_axis, y_axis = R[:, 1], R[:, 0]
+        x_axis, y_axis = R[:, 0], R[:, 1]
 
         # Compute extents
         origin = min(positions, key=lambda p: np.dot(p, x_axis) + np.dot(p, y_axis))
