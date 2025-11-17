@@ -44,9 +44,9 @@ def infer_square_for_group(markers, default_edge=0.550):
     if len(poses) == 1:
         # Case 1: Single marker
         origin = poses[0]["pos"]
-        x_axis = poses[0]["R"][:, 0]
+        x_axis = poses[0]["R"][:, 1]
         # Use marker's Y as your X
-        y_axis = poses[0]["R"][:, 1]
+        y_axis = poses[0]["R"][:, 0]
         # Use marker's X as your Y
         return build_square_from_axes(origin, x_axis, y_axis, default_edge, default_edge)
 
