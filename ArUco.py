@@ -74,18 +74,22 @@ def infer_square_for_group(markers, default_edge=0.550):
             return build_square_from_axes(origin, x_axis, y_axis, dist, dist)
 
     elif len(poses) == 3:
-        # Case 3: Three markers → best-fit square
         positions = [p["pos"] for p in poses]
-        # Compute bounding box in local plane
-        origin = positions[0]
-        R = poses[0]["R"]
-        x_axis, y_axis = R[:, 0], R[:, 1]
-
-        # Project other markers onto local axes
-        coords = [(np.dot(p - origin, x_axis), np.dot(p - origin, y_axis)) for p in positions]
-        max_x = max(c[0] for c in coords)
-        max_y = max(c[1] for c in coords)
-        return build_square_from_axes(origin, x_axis, y_axis, max_x, max_y)
+        p1, p2, p3 = positions
+    
+        # Compute vectors
+        v1 = p2 - p1
+        v2 = p3 - p1
+    
+        # Normalize to same length
+        side_len = min(np.linalg.norm(v1), np.linalg.norm(v2))
+        v1 = v1 / np.linalg.norm(v1) * side_len
+        v2 = v2 / np.linalg.norm(v2) * side_len
+    
+        # Compute fourth point
+        p4 = p1 + v1 + v2
+    
+        return [p1, p2, p3, p4]
 
     else:
         # Case 4: Four markers → fully constrained
@@ -97,7 +101,7 @@ def infer_square_for_group(markers, default_edge=0.550):
         #origin = min(positions, key=lambda p: np.dot(p, x_axis) + np.dot(p, y_axis))
         #max_x = max(np.dot(p - origin, x_axis) for p in positions)
         #max_y = max(np.dot(p - origin, y_axis) for p in positions)
-        return positions
+        return positions.tolist()
 
 def infer_squares(markers, default_edge=0.6):
     """
