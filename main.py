@@ -268,7 +268,7 @@ def get_markers():
     # Infer squares using pose-based logic
     squares = infer_squares(final_markers, default_edge=0.2)  # 0.2 meters = 200 mm
 
-    offset_factor = 0.1  # shrink by 10%
+    offset_factor = 0.2  # shrink by 10%
     # Add 2D projection and ROI
     for marker_id, data in squares.items():
         square_3d = data["square_3d"]
