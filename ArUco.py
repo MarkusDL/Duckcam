@@ -107,7 +107,7 @@ def infer_square_for_group(markers, default_edge=0.550):
         #origin = min(positions, key=lambda p: np.dot(p, x_axis) + np.dot(p, y_axis))
         #max_x = max(np.dot(p - origin, x_axis) for p in positions)
         #max_y = max(np.dot(p - origin, y_axis) for p in positions)
-        return positions
+        return order_points(positions)
 
 def infer_squares(markers, default_edge=0.6):
     """
