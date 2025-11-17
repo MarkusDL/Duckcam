@@ -77,7 +77,7 @@ def infer_square_for_group(markers, default_edge=0.550):
         # Compute bounding box in local plane
         origin = positions[0]
         R = poses[0]["R"]
-        x_axis, y_axis = R[:, 1], R[:, 0]
+        x_axis, y_axis = R[:, 0], R[:, 1]
 
         # Project other markers onto local axes
         coords = [(np.dot(p - origin, x_axis), np.dot(p - origin, y_axis)) for p in positions]
