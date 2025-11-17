@@ -133,30 +133,43 @@ import numpy as np
 def deduplicate_markers(marker_list, distance_threshold=20):
     """
     Deduplicate markers based on ID and proximity.
-    marker_list: list of dicts with 'id' and 'corners'
+    Preserves r_vec and t_vec for pose-based calculations.
     """
     deduped = {}
-    
+
     for marker in marker_list:
         marker_id = marker["id"]
-        corners = np.array(marker["corners"])
         center = np.array(marker["center"])
+        corners = np.array(marker["corners"])
+        r_vec = np.array(marker["r_vec"])
+        t_vec = np.array(marker["t_vec"])
 
         if marker_id not in deduped:
-            deduped[marker_id] = [{"center": center, "corners": corners}]
+            deduped[marker_id] = [{
+                "center": center,
+                "corners": corners,
+                "r_vec": r_vec,
+                "t_vec": t_vec
+            }]
         else:
-            # Check if this marker is close to any existing one
             merged = False
             for existing in deduped[marker_id]:
                 dist = np.linalg.norm(center - existing["center"])
                 if dist < distance_threshold:
-                    # Merge by averaging
+                    # Merge by averaging pose and geometry
                     existing["center"] = (existing["center"] + center) / 2
                     existing["corners"] = (existing["corners"] + corners) / 2
+                    existing["r_vec"] = (existing["r_vec"] + r_vec) / 2
+                    existing["t_vec"] = (existing["t_vec"] + t_vec) / 2
                     merged = True
                     break
             if not merged:
-                deduped[marker_id].append({"center": center, "corners": corners})
+                deduped[marker_id].append({
+                    "center": center,
+                    "corners": corners,
+                    "r_vec": r_vec,
+                    "t_vec": t_vec
+                })
 
     # Flatten and format output
     result = []
@@ -165,7 +178,9 @@ def deduplicate_markers(marker_list, distance_threshold=20):
             result.append({
                 "id": marker_id,
                 "center": inst["center"].tolist(),
-                "corners": inst["corners"].tolist()
+                "corners": inst["corners"].tolist(),
+                "r_vec": inst["r_vec"].tolist(),
+                "t_vec": inst["t_vec"].tolist()
             })
 
     return result
