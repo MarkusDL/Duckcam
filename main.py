@@ -269,7 +269,8 @@ def get_markers():
     # Add 2D projection and ROI
     for marker_id, data in squares.items():
         square_3d = data["square_3d"]
-      
+
+        center = np.mean(square_3d, axis=0)
         # Offset points toward center
         adjusted_square = [center + (p - center) * (1 - 0.15) for p in square_3d]
 
