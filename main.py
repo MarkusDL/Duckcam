@@ -50,7 +50,8 @@ def create_zip_of_images(frame, squares):
                 try:
                     M = cv2.getPerspectiveTransform(clipped, dst)
                     warped = cv2.warpPerspective(frame, M, (w, h))
-                    _, buf = cv2.imencode(".png", warped)
+                    warped_rgg =cv2.cvtColor(warped, cv2.COLOR_BGR2RGB)
+                    _, buf = cv2.imencode(".jpg", warped_rgg)
                     zf.writestr(f"square_{square_id}.png", buf.tobytes())
                 except cv2.error as e:
                     print(f"Skipping square {square_id}: {e}")
