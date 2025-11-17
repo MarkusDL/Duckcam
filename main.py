@@ -218,7 +218,7 @@ def get_markers():
             if ids is None or len(ids) < 1:
                 continue
 
-            for marker_id, inst_corners, rvec, tvec in zip(ids, corners, rvecs, tvecs):
+            for marker_id, inst_corners in zip(ids, corners):
                 offset_corners = inst_corners[0] + np.array([x, y])
                 offset_center = get_marker_center(offset_corners)
 
