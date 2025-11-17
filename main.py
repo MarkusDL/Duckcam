@@ -230,6 +230,11 @@ def get_markers():
     buffer = io.BytesIO(json_bytes)
     buffer.seek(0)
 
+    
+    squares = infer_squares(final_markers)
+    print(json.dumps(squares, indent=2))
+
+
     return Response(
         buffer,
         mimetype='application/json'
