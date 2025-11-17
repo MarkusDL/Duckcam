@@ -269,7 +269,11 @@ def get_markers():
     # Add 2D projection and ROI
     for marker_id, data in squares.items():
         square_3d = data["square_3d"]
-        square_2d = project_square_to_image(square_3d, camera_matrix, dist_coeffs)
+      
+        # Offset points toward center
+        adjusted_square = [center + (p - center) * (1 - 0.15) for p in square_3d]
+
+        square_2d = project_square_to_image(adjusted_square, camera_matrix, dist_coeffs)
         squares[marker_id]["square_2d"] = square_2d
         squares[marker_id]["roi"] = [
             min(p[0] for p in square_2d),
