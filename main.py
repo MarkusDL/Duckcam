@@ -222,7 +222,7 @@ def get_markers():
                 offset_corners = inst_corners[0] + np.array([x, y])
                 offset_center = get_marker_center(offset_corners)
 
-                rvecs, tvecs, _ = aruco.estimatePoseSingleMarkers([offset_corners], 0.025, camera_matrix, dist_coeffs)
+                rvec, tvec, _ = aruco.estimatePoseSingleMarkers([offset_corners], 0.025, camera_matrix, dist_coeffs)
                 all_markers_list.append({
                     "id": int(marker_id.item()),
                     "center": offset_center.tolist(),
