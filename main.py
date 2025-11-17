@@ -12,7 +12,8 @@ import io
 from flask import jsonify
 import json
 import tempfile
-
+from datetime import datetime
+import zipfile
 import gc
 
 app = Flask(__name__)
@@ -30,6 +31,25 @@ picam.start()
 
 # Ensure camera is stopped on exit
 atexit.register(picam.stop)
+
+
+def create_zip_of_images(image, squares):
+    # Create an in-memory ZIP file
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for marker_id, data in squares.items():
+            square_2d = np.array(data["square_2d"], dtype=np.float32)
+            dst = np.array([[0, 0], [499, 0], [499, 499], [0, 499]], dtype=np.float32)
+            M = cv2.getPerspectiveTransform(square_2d, dst)
+            warped = cv2.warpPerspective(image, M, (500, 500))
+
+            # Encode image to JPEG in memory
+            _, img_bytes = cv2.imencode('.jpg', warped)
+            filename = f"{marker_id}_{datetime.now().strftime('%Y_%m_%d_%H-%M-%S')}.jpg"
+            zip_file.writestr(filename, img_bytes.tobytes())
+
+    zip_buffer.seek(0)
+    return zip_buffer
 
 def parse_res_from_request():
     # Accept either ?res=w,h or ?w=&h=
@@ -262,11 +282,15 @@ def get_markers():
     buffer = io.BytesIO(json_bytes)
     buffer.seek(0)
 
+    zip_buffer = create_zip_of_images(frame, squares)
+    return Response(zip_buffer, mimetype='application/zip',
+                    headers={"Content-Disposition": "attachment; filename=markers.zip"})
 
-    return Response(
-        buffer,
-        mimetype='application/json'
-    )
+
+    #return Response(
+    #    buffer,
+    #    mimetype='application/json'
+    #)
 
 
 if __name__ == "__main__":
