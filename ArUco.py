@@ -11,14 +11,9 @@ import cv2
 
 
 def order_points(points):
-    # points: list of 4 np.array([x, y, z])
     center = np.mean(points, axis=0)
-    
-    def angle(p):
-        vec = p - center
-        return np.arctan2(vec[1], vec[0])  # XY plane
-    
-    return sorted(points, key=angle)
+    pts_sorted = sorted(points, key=lambda p: np.arctan2(p[1]-center[1], p[0]-center[0]))
+    return pts_sorted
 
     
 def project_square_to_image(square_3d, camera_matrix, dist_coeffs):
