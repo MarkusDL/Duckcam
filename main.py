@@ -225,14 +225,14 @@ def get_markers():
     final_markers = deduplicate_markers(all_markers_list)
     print(f"of which {str(len(final_markers))} was unique")
     
-    # Serialize to JSON and send as file
-    json_bytes = json.dumps(final_markers, indent=2).encode('utf-8')
-    buffer = io.BytesIO(json_bytes)
+    squares = infer_squares(final_markers, default_side_len=50)
+    result = {
+        "markers": final_markers,
+        "squares": squares
+    }
+    json_bytes = json.dumps(result, indent=2).encode('utf-8')
+        buffer = io.BytesIO(json_bytes)
     buffer.seek(0)
-
-    
-    squares = infer_squares(final_markers)
-    print(json.dumps(squares, indent=2))
 
 
     return Response(
