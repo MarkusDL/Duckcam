@@ -205,11 +205,7 @@ def get_markers():
 
     for y_idx, y in enumerate(y_starts):
         for x_idx, x in enumerate(x_starts):
-            tile = frame[y:y + tile_size, x:x + tile_size]
-
-            # Draw tile boundary
-            tile_color = get_linear_tile_color(x_idx, y_idx, max_x_index, max_y_index)
-            cv2.rectangle(draw_frame , (x, y), (x + tile_size, y + tile_size), color=tile_color, thickness=2)
+            tile = arr[y:y + tile_size, x:x + tile_size]
 
             ids, corners = detect_aruco_markers(tile)
             if ids is None or len(ids) < 1:
