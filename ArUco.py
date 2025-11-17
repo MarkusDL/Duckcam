@@ -17,7 +17,7 @@ def is_perpendicular(angle1, angle2, tol=15):
     diff = abs(angle1 - angle2) % 180
     return abs(diff - 90) < tol
 
-def approximate_square(center, side_len=50):
+def approximate_square(center, side_len=600):
     """Approximate a square centered at given point."""
     cx, cy = center
     return [
