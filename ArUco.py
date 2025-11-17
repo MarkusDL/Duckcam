@@ -44,8 +44,10 @@ def infer_square_for_group(markers, default_edge=0.6):
     if len(poses) == 1:
         # Case 1: Single marker
         origin = poses[0]["pos"]
-        x_axis = poses[0]["R"][:, 0]
-        y_axis = poses[0]["R"][:, 1]
+        x_axis = poses[0]["R"][:, 1]
+        # Use marker's Y as your X
+        y_axis = poses[0]["R"][:, o]
+        # Use marker's X as your Y
         return build_square_from_axes(origin, x_axis, y_axis, default_edge, default_edge)
 
     elif len(poses) == 2:
@@ -59,8 +61,10 @@ def infer_square_for_group(markers, default_edge=0.6):
         dot_y = np.dot(R1[:, 1], R2[:, 1])
 
         origin = p1
-        x_axis = R1[:, 0]
-        y_axis = R1[:, 1]
+        # Use marker's Y as your X
+        x_axis = R1[:, 1]
+        # Use marker's X as your Y
+        y_axis = R1[:, 0]
 
         if abs(dot_x) > 0.9:  # Same edge
             return build_square_from_axes(origin, x_axis, y_axis, dist, default_edge)
