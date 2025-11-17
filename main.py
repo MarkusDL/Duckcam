@@ -15,6 +15,7 @@ import tempfile
 from datetime import datetime
 import zipfile
 import gc
+import socket
 
 app = Flask(__name__)
 
@@ -42,9 +43,13 @@ def create_zip_of_images(image, squares):
             dst = np.array([[0, 0], [499, 0], [499, 499], [0, 499]], dtype=np.float32)
             M = cv2.getPerspectiveTransform(square_2d, dst)
             warped = cv2.warpPerspective(image, M, (500, 500))
+          
+            # Convert BGR to RGB
+            warped_rgb = cv2.cvtColor(warped, cv2.COLOR_BGR2RGB)
+
 
             # Encode image to JPEG in memory
-            _, img_bytes = cv2.imencode('.jpg', warped)
+            _, img_bytes = cv2.imencode('.jpg', warped_rgb)
             filename = f"{marker_id}_{datetime.now().strftime('%Y_%m_%d_%H-%M-%S')}.jpg"
             zip_file.writestr(filename, img_bytes.tobytes())
 
@@ -282,9 +287,25 @@ def get_markers():
     buffer = io.BytesIO(json_bytes)
     buffer.seek(0)
 
+    
+    # Get hostname of the device making the request
+    client_host = request.remote_addr  # IP address
+    try:
+        # Resolve hostname from IP (optional)
+        client_hostname = socket.gethostbyaddr(client_host)[0]
+    except socket.herror:
+        client_hostname = client_host  # fallback to IP
+
+    # Timestamp in required format
+    timestamp = datetime.now().strftime('%Y_%m_%d_%H-%M-%S')
+
+    # Build filename
+    filename = f"{client_hostname}_{timestamp}.zip"
+
+
     zip_buffer = create_zip_of_images(arr, squares)
     return Response(zip_buffer, mimetype='application/zip',
-                    headers={"Content-Disposition": "attachment; filename=markers.zip"})
+                    headers={"Content-Disposition": "attachment; filename={filename}"})
 
 
     #return Response(
