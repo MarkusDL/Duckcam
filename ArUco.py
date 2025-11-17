@@ -10,6 +10,17 @@ import numpy as np
 import cv2
 
 
+def order_points(points):
+    # points: list of 4 np.array([x, y, z])
+    center = np.mean(points, axis=0)
+    
+    def angle(p):
+        vec = p - center
+        return np.arctan2(vec[1], vec[0])  # XY plane
+    
+    return sorted(points, key=angle)
+
+    
 def project_square_to_image(square_3d, camera_matrix, dist_coeffs):
     pts = np.array(square_3d, dtype=np.float32)
     img_pts, _ = cv2.projectPoints(pts, np.zeros(3), np.zeros(3), camera_matrix, dist_coeffs)
@@ -88,8 +99,8 @@ def infer_square_for_group(markers, default_edge=0.550):
     
         # Compute fourth point
         p4 = p1 + v1 + v2
-    
-        return [p1, p2, p3, p4]
+
+        return order_points([p1, p2, p3, p4])
 
     else:
         # Case 4: Four markers → fully constrained
