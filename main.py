@@ -5,7 +5,7 @@ import io
 import atexit
 import time
 import numpy as np
-from ArUco import detect_aruco_markers, split_into_tiles, deduplicate_markers, get_marker_center
+from ArUco import *
 import cv2
 import io
 from flask import jsonify
