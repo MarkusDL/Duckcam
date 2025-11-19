@@ -210,6 +210,8 @@ def get_long_exposure():
     config = picam.create_still_configuration(main={"size": (width, height)})
     picam.configure(config)
     picam.start()
+    picam.set_controls({"AnalogueGain": 8.0})
+    picam.set_controls({"DigitalGain": 4.0})
     picam.set_controls({"AeEnable": False})
     picam.set_controls({"ExposureTime": 10000000, "AnalogueGain": 1.0})
     time.sleep(12)
