@@ -200,7 +200,7 @@ def stream():
 
 @app.route("/longexposure")
 def get_long_exposure():
-      roi = parse_roi_from_request()
+    roi = parse_roi_from_request()
 
     print(roi)
 
