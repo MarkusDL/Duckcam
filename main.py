@@ -198,6 +198,48 @@ def stream():
 
     return Response(generate(), mimetype="multipart/x-mixed-replace; boundary=frame")
 
+@app.route("/longexposure")
+def get_long_exposure():
+      roi = parse_roi_from_request()
+
+    print(roi)
+
+    picam.stop()
+    width =  4056
+    height = 3040
+    config = picam.create_still_configuration(main={"size": (width, height)})
+    picam.configure(config)
+    picam.start()
+    picam.set_controls({"AeEnable": False})
+    picam.set_controls({"ExposureTime": 10000000, "AnalogueGain": 1.0})
+    time.sleep(12)
+
+
+    arr = picam.capture_array("main")  # shape: (height, width, channels)
+    
+    # Flip horizontally in place
+    arr[:] = arr[:, ::-1, :]
+
+    img_h, img_w = arr.shape[:2]
+
+    if roi:
+        x, y, w, h = roi
+        if w <= 0 or h <= 0:
+            abort(400, "Width and height must be positive.")
+        # clamp coordinates to image bounds
+        x = max(0, x)
+        y = max(0, y)
+        x2 = min(img_w, x + w)
+        y2 = min(img_h, y + h)
+        if x >= x2 or y >= y2:
+            abort(400, "ROI is outside image bounds.")
+        arr = arr[y:y2, x:x2]
+
+    img = Image.fromarray(arr).convert("RGB")
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=90)
+    buf.seek(0)
+    return send_file(buf, mimetype="image/jpeg")
 
 @app.route("/markers")
 def get_markers():
