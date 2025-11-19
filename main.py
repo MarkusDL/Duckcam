@@ -212,7 +212,6 @@ def get_long_exposure():
     picam.start()
     picam.set_controls({"AeEnable": False})
     picam.set_controls({"ExposureTime": 100000000, "AnalogueGain": 8.0})
-    time.sleep(12)
 
 
     arr = picam.capture_array("main")  # shape: (height, width, channels)
