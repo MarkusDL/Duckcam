@@ -129,6 +129,14 @@ def get_image():
     height = 3040
     config = picam.create_preview_configuration(main={"size": (width, height)})
     picam.configure(config)
+  
+    # Enable auto controls
+    picam.set_controls({
+        "AeEnable": True,       # Auto Exposure
+        "AwbEnable": True,      # Auto White Balance
+        "AnalogueGain": None    # Let the system control gain automatically
+    })
+
     picam.start()
 
     arr = picam.capture_array("main")  # shape: (height, width, channels)
@@ -174,6 +182,12 @@ def stream():
 
     config = picam.create_preview_configuration(main={"size": (width, height)})
     picam.configure(config)
+    # Enable auto controls
+    picam.set_controls({
+        "AeEnable": True,       # Auto Exposure
+        "AwbEnable": True,      # Auto White Balance
+        "AnalogueGain": None    # Let the system control gain automatically
+    })
     picam.start()
 
     def generate():
@@ -249,6 +263,12 @@ def get_markers():
     width, height = 4056, 3040  # You can change this to full resolution if needed
     config = picam.create_preview_configuration(main={"size": (width, height)})
     picam.configure(config)
+    # Enable auto controls
+    picam.set_controls({
+        "AeEnable": True,       # Auto Exposure
+        "AwbEnable": True,      # Auto White Balance
+        "AnalogueGain": None    # Let the system control gain automatically
+    })
     picam.start()
 
     arr = picam.capture_array("main")  # shape: (height, width, channels)
