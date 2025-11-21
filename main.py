@@ -34,9 +34,23 @@ picam.start()
 atexit.register(picam.stop)
 
 
-def create_zip_of_images(frame, squares):
+def create_zip_of_images(frame, squares, marker_detection_json):
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w") as zf:
+        # write json result from marker detection to zipfile
+        if isinstance(marker_detection_json, (dict, list)):
+            json_bytes = json.dumps(marker_detection_json, ensure_ascii=False, indent=2).encode("utf-8")
+        else:
+            # Assume it's a string-like
+            json_bytes = str(marker_detection_json).encode("utf-8")
+        zf.writestr("marker_detections.json", json_bytes)
+
+      
+        # write full frame to zip file
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        _, buf = cv2.imencode(".jpg", frame_rgb)
+        zf.writestr(f"full_frame.png", buf.tobytes())
+      
         for square_id, square_info in squares.items():
             square_2d = square_info.get("square_2d", [])
             if len(square_2d) == 4:
@@ -364,7 +378,7 @@ def get_markers():
     filename = f"{server_hostname}_{timestamp}.zip"
 
 
-    zip_buffer = create_zip_of_images(arr, squares)
+    zip_buffer = create_zip_of_images(arr, squares, result)
     
     return Response(
             zip_buffer,
