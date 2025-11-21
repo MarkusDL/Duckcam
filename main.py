@@ -33,21 +33,18 @@ picam.start()
 # Ensure camera is stopped on exit
 atexit.register(picam.stop)
 
-
-def make_json_serializable(obj):
-    if isinstance(obj, np.ndarray):
-        return obj.tolist()
-    if isinstance(obj, (np.int64, np.float64)):
-        return obj.item()
-    raise TypeError(f"Type {type(obj)} not serializable")
-
-
 def create_zip_of_images(frame, squares, marker_detection_json):
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w") as zf:
         # write json result from marker detection to zipfile
         if isinstance(marker_detection_json, (dict, list)):
-            json_bytes = json.dumps(make_json_serializable(marker_detection_json), ensure_ascii=False, indent=2).encode("utf-8")
+            json_bytes = json.dumps(
+                marker_detection_json,
+                ensure_ascii=False,
+                indent=2,
+                default=lambda o: o.tolist() if hasattr(o, "tolist") else str(o)
+            ).encode("utf-8")
+
         else:
             # Assume it's a string-like
             json_bytes = str(marker_detection_json).encode("utf-8")
