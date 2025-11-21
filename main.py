@@ -47,7 +47,7 @@ def create_zip_of_images(frame, squares, marker_detection_json):
     with zipfile.ZipFile(zip_buffer, "w") as zf:
         # write json result from marker detection to zipfile
         if isinstance(marker_detection_json, (dict, list)):
-            json_bytes = json.dumps(marker_detection_json, ensure_ascii=False, indent=2).encode("utf-8")
+            json_bytes = json.dumps(make_json_serializable(marker_detection_json), ensure_ascii=False, indent=2).encode("utf-8")
         else:
             # Assume it's a string-like
             json_bytes = str(marker_detection_json).encode("utf-8")
