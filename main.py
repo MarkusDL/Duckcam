@@ -54,7 +54,7 @@ def create_zip_of_images(frame, squares, marker_detection_json):
         # write full frame to zip file
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         _, buf = cv2.imencode(".jpg", frame_rgb)
-        zf.writestr(f"full_frame.png", buf.tobytes())
+        zf.writestr(f"full_frame.jpg", buf.tobytes())
       
         for square_id, square_info in squares.items():
             square_2d = square_info.get("square_2d", [])
@@ -69,7 +69,7 @@ def create_zip_of_images(frame, squares, marker_detection_json):
                     warped = cv2.warpPerspective(frame, M, (w, h))
                     warped_rgg =cv2.cvtColor(warped, cv2.COLOR_BGR2RGB)
                     _, buf = cv2.imencode(".jpg", warped_rgg)
-                    zf.writestr(f"square_{square_id}.png", buf.tobytes())
+                    zf.writestr(f"square_{square_id}.jpg", buf.tobytes())
                 except cv2.error as e:
                     print(f"Skipping square {square_id}: {e}")
     zip_buffer.seek(0)
