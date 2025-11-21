@@ -134,7 +134,7 @@ def get_image():
     picam.set_controls({
         "AeEnable": True,       # Auto Exposure
         "AwbEnable": True,      # Auto White Balance
-        "AnalogueGain": None    # Let the system control gain automatically
+        "AnalogueGain": 1.0
     })
 
     picam.start()
@@ -186,7 +186,7 @@ def stream():
     picam.set_controls({
         "AeEnable": True,       # Auto Exposure
         "AwbEnable": True,      # Auto White Balance
-        "AnalogueGain": None    # Let the system control gain automatically
+        "AnalogueGain": 1.0
     })
     picam.start()
 
