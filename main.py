@@ -34,6 +34,14 @@ picam.start()
 atexit.register(picam.stop)
 
 
+def make_json_serializable(obj):
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, (np.int64, np.float64)):
+        return obj.item()
+    raise TypeError(f"Type {type(obj)} not serializable")
+
+
 def create_zip_of_images(frame, squares, marker_detection_json):
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w") as zf:
