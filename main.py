@@ -302,7 +302,7 @@ def get_lab_green_red():
 
     # Save to JPEG and return as grayscale
     buf = io.BytesIO()
-    a_channel_img.save(buf, format="PNG", quality=100)  # still grayscale JPEG
+    a_channel_img.save(buf, format="PNG", optimize=True, compress_level=6)
     buf.seek(0)
     return send_file(buf, mimetype="image/png")
    
