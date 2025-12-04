@@ -293,13 +293,15 @@ def get_lab_green_red():
     rgb = picam.capture_array()  # shape (H, W, 3), dtype=uint8, sRGB-like
     
     # OpenCV expects RGB in uint8; returns L,a,b also in uint8 by default.
-    lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB)
-    a_channel = lab[:, :, 1]  # uint8 representation (approx. 0..255)
+    img_rgb = Image.fromarray(arr, mode="RGB")
+    img_lab = img_rgb.convert("LAB")
+
+    a_channel_img = img_lab.split()[1]
 
 
     # Save to JPEG and return as grayscale
     buf = io.BytesIO()
-    a_channel.save(buf, format="JPEG", quality=100)  # still grayscale JPEG
+    a_channel_img.save(buf, format="JPEG", quality=100)  # still grayscale JPEG
     buf.seek(0)
     return send_file(buf, mimetype="image/jpeg")
    
