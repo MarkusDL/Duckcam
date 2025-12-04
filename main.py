@@ -293,7 +293,7 @@ def get_lab_green_red():
     rgb = picam.capture_array()  # shape (H, W, 3), dtype=uint8, sRGB-like
     
     # OpenCV expects RGB in uint8; returns L,a,b also in uint8 by default.
-    img_rgb = Image.fromarray(arr, mode="RGB")
+    img_rgb = Image.fromarray(rgb, mode="RGB")
     img_lab = img_rgb.convert("LAB")
 
     a_channel_img = img_lab.split()[1]
