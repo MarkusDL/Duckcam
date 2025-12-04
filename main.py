@@ -273,6 +273,38 @@ def get_long_exposure():
     buf.seek(0)
     return send_file(buf, mimetype="image/jpeg")
 
+@app.route("/greenred")
+def get_lab_green_red():
+    
+    # ---- Picamera2 setup: ISP processes to RGB888 ----
+    # Step 1: Capture image
+    picam.stop()
+    width, height = 4056, 3040  # You can change this to full resolution if needed
+    config = picam.create_preview_configuration(main={"size": (width, height), "format": "RGB888"})
+    picam.configure(config)
+    # Enable auto controls
+    picam.set_controls({
+        "AeEnable": True,       # Auto Exposure
+        "AwbEnable": True,      # Auto White Balance
+        "AnalogueGain": 1.0
+    })
+    picam.start()
+
+    rgb = picam.capture_array()  # shape (H, W, 3), dtype=uint8, sRGB-like
+    
+    # OpenCV expects RGB in uint8; returns L,a,b also in uint8 by default.
+    lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB)
+    a_channel = lab[:, :, 1]  # uint8 representation (approx. 0..255)
+
+
+    # Save to JPEG and return as grayscale
+    buf = io.BytesIO()
+    a_channel.save(buf, format="JPEG", quality=100)  # still grayscale JPEG
+    buf.seek(0)
+    return send_file(buf, mimetype="image/jpeg")
+   
+
+
 @app.route("/markers")
 def get_markers():
     import numpy as np
