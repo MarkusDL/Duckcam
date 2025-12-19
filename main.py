@@ -1,5 +1,5 @@
 from flask import Flask, send_file, request, abort, Response
-from picamera2 import Picamera2
+from picamera2 import Picamera2, controls
 from PIL import Image
 import io
 import atexit
@@ -19,19 +19,84 @@ import socket
 
 app = Flask(__name__)
 
+width_max, height_max = 9152, 6944  # Max resolution for Hawkeye
+
 camera_matrix = np.array([[5160, 0., 2028],
                           [  0., 5160, 1520],
                           [  0., 0., 1.        ]], dtype=np.float32)
 dist_coeffs = np.array([[ 0, 0, 0, 0, 0]], dtype=np.float32)  # Assuming no distortion
 
+AF_TIMEOUT_S = 5.0  # hard cap so the request never hangs
+
 # Initialize and start the camera once
 picam = Picamera2()
-config = picam.create_preview_configuration(main={"size": (4056, 3040)})
+config = picam.create_still_configuration(
+    main={"size": (640, 480), "format": "YUV420"},   # tiny main stream
+    raw={"size": (9152, 6944), "format": "SRGGB10"}, # full-res RAW
+    lores=None,
+    display=None
+    )
+
 picam.configure(config)
 picam.start()
 
 # Ensure camera is stopped on exit
 atexit.register(picam.stop)
+
+import numpy as np
+
+import numpy as np
+
+def process_raw10(packed, width, height):
+    """
+    Unpack RAW10 Bayer data (SRGGB10) into a uint16 array of shape (height, width).
+    Each pixel value is 10 bits (0–1023).
+    """
+    # Compute stride from buffer size (bytes per row)
+    stride = packed.size // height
+    packed = packed.reshape(height, stride)
+
+    # Useful bytes per row (ignore padding beyond this)
+    useful = (width // 4) * 5
+    groups = packed[:, :useful].reshape(height, -1, 5)
+
+    # Extract bytes
+    b0 = groups[:, :, 0].astype(np.uint16)
+    b1 = groups[:, :, 1].astype(np.uint16)
+    b2 = groups[:, :, 2].astype(np.uint16)
+    b3 = groups[:, :, 3].astype(np.uint16)
+    b4 = groups[:, :, 4].astype(np.uint16)
+
+    # Reconstruct 4 pixels per group
+    p0 = (b0 << 2) | ((b4 >> 0) & 0x3)
+    p1 = (b1 << 2) | ((b4 >> 2) & 0x3)
+    p2 = (b2 << 2) | ((b4 >> 4) & 0x3)
+    p3 = (b3 << 2) | ((b4 >> 6) & 0x3)
+
+    # Fill pixels into output row
+    # Each group contributes 4 pixels
+    pixels = np.empty((height, groups.shape[1] * 4), dtype=np.uint16)
+    pixels[:, 0::4] = p0
+    pixels[:, 1::4] = p1
+    pixels[:, 2::4] = p2
+    pixels[:, 3::4] = p3
+
+    # Trim to actual width
+    raw16 = pixels[:, :width]
+
+    # Scale to 8-bit
+    raw8 = (raw16 / 1023.0 * 255).astype(np.uint8)
+
+    # Demosaic using RGGB pattern
+    rgb = cv2.demosaicing(raw8, cv2.COLOR_BayerRG2RGB)
+
+    # Apply gamma correction
+    rgb_f = rgb.astype(np.float32) / 255.0
+    rgb_f = np.power(rgb_f, 1/1.8)  # gamma ~1.8
+    rgb_out = (rgb_f * 255).astype(np.uint8)
+
+    return rgb_out
+
 
 def create_zip_of_images(frame, squares, marker_detection_json):
     zip_buffer = io.BytesIO()
@@ -76,6 +141,28 @@ def create_zip_of_images(frame, squares, marker_detection_json):
     return zip_buffer
 
 
+def parse_focus_from_request():
+    """
+    Parse ?focus= from Flask request.args and return LensPosition (diopters).
+    Supports:
+      - ?focus=2.5            (diopters)
+      - ?focus=0.25&unit=m    (meters -> diopters = 1/m)
+    Returns None if not present or invalid.
+    """
+    lp = request.args.get("focus")
+    if lp is None:
+        return 0, 5.0
+
+    try:
+        lp = float(lp)
+    except ValueError:
+        return 0, 5.0  # Default to 5.0 diopters if no unit specified
+
+    # Clamp to typical Hawkeye range: 0 (∞) to ~13 (≈8 cm)
+    lp = max(0.0, min(lp, 13.0))
+    return 0, lp
+
+
 def parse_res_from_request():
     # Accept either ?res=w,h or ?w=&h=
     res = request.args.get("res")
@@ -94,17 +181,17 @@ def parse_res_from_request():
         except Exception:
             abort(400, "Invalid w/h parameter(s).")
         if None in (width, height):
-            return None    
+            return (9152, 6944)  # Default to max resolution
     if width <= 0 or height <= 0:
         abort(400, "Width and height must be positive.")
-    if width > 4056 or height > 3040:
-        abort(400, "Requested resolution exceeds camera capabilities (max 4056x3040).")
+    if width > width_max or height > height_max :
+        abort(400, f"Requested resolution exceeds camera capabilities (max {width_max}x{height_max}).")
     return (width, height)
     
 
 def parse_roi_from_request():
     # Image size must match camera configuration
-    IMG_W, IMG_H = 4056, 3040
+    IMG_W, IMG_H = width_max, height_max
 
     # Accept either ?roi=x,y,w,h or ?x=&y=&w=&h=
     roi = request.args.get("roi")
@@ -136,32 +223,151 @@ def parse_roi_from_request():
         )
     return (x, y, w, h)
 
-    
-@app.route("/image")
-def get_image():
-    roi = parse_roi_from_request()
 
-    print(roi)
+from picamera2 import Picamera2
+from libcamera import controls
+from flask import send_file
+import io
 
+@app.route("/fullres_jpg_native")
+def get_fullres_jpg_native():
+    focus_mode, lp = parse_focus_from_request()
     picam.stop()
-    width =  4056
-    height = 3040
-    config = picam.create_preview_configuration(main={"size": (width, height)})
+    FULL_W, FULL_H = 9152, 6944
+
+    # Create a full-res still configuration
+    config = picam.create_still_configuration(
+        main={"size": (FULL_W, FULL_H), "format": "YUV420"},  # encoder will compress to JPEG
+        lores={"size": (1280, 720)},
+        display="lores"                  # use the lores stream for preview
+    )
     picam.configure(config)
-  
-    # Enable auto controls
+
+    # Optional: quality knob
+    picam.options["quality"] = 100 # Adjust quality as needed
+
+    # Auto exposure / white balance (or set manual if you prefer)
     picam.set_controls({
-        "AeEnable": True,       # Auto Exposure
-        "AwbEnable": True,      # Auto White Balance
-        "AnalogueGain": 1.0
+        "AeEnable": True,
+        "AwbEnable": True,
+        "AfMode": focus_mode,
+        "AfSpeed": controls.AfSpeedEnum.Fast,
+        "LensPosition": lp,
+        "AnalogueGain": 1.0,
+
     })
 
     picam.start()
 
-    arr = picam.capture_array("main")  # shape: (height, width, channels)
+    picam.set_controls({"LensPosition": lp+0.5})
+    time.sleep(0.5)  # let focus and AE/AWB settle at further position
+    for _ in range(3):
+        picam.set_controls({"LensPosition": lp})
+        time.sleep(0.5)  # let focus and AE/AWB settle
+
+    # Capture to an in-memory file
+    buf = io.BytesIO()
+    print(f"Setting focus mode {focus_mode}")
+    if focus_mode == 0:
+        print("Setting focus position directly...")
+        time.sleep(1)
+    else:
+        picam.autofocus_cycle()
+        print("Taking picture...")
+        time.sleep(3)
+
+    picam.capture_file(buf, format="jpeg")
+    buf.seek(0)
+
+    return send_file(buf, mimetype="image/jpeg")
+
+@app.route("/raw_unpacked")
+def get_raw_packed():
     
+    lp = parse_focus_from_request()
+    # Stop and configure for packed RAW10 on the raw stream
+    picam.stop()
+    modes = picam.sensor_modes
+    mode = modes[1]  # Assuming the first mode is the one with packed RAW10
+    config = picam.create_still_configuration(
+        main={"size": (640, 480), "format": "YUV420"},  # small preview path
+        raw={"size": (9152, 6944), 'format': mode['unpacked']},  # packed RAW10 if supported
+        lores=None, display=None
+    )
+    picam.configure(config)
+    picam.set_controls({"AeEnable": True, "AwbEnable": True, "AfMode": 0 ,"LensPosition": lp})
+    picam.start()
+
+    picam.set_controls({"LensPosition": lp+0.5})
+    time.sleep(0.5)  # let focus and AE/AWB settle at further position
+    for _ in range(3):
+        picam.set_controls({"LensPosition": lp})
+        time.sleep(0.5)  # let focus and AE/AWB settle
+
+    # Get the raw packed buffer (bytes)
+    # NOTE: Picamera2 returns a bytes-like object for the selected stream
+    buf = picam.capture_array("raw")  # unpacked MIPI RAW10 if the format is ...CSI2P
+
+    # Optional: if you apply a horizontal flip in preview, do NOT flip here—
+    # that would break the line packing. Keep RAW as-is when sending packed.
+
+    # Return as application/octet-stream with a filename
+    return send_file(
+        io.BytesIO(buf),
+        mimetype="application/octet-stream",
+        as_attachment=True,
+        download_name="frame_raw10_packed.raw"
+    )
+
+    
+@app.route("/image")
+def get_image():
+    roi = parse_roi_from_request()
+    width, height = parse_res_from_request()
+    focus_mode, lp = parse_focus_from_request()
+
+    picam.stop()
+    FULL_W, FULL_H = 9152, 6944
+
+    # Create a full-res still configuration
+    config = picam.create_still_configuration(
+        main={"size": (width, height), "format": "YUV420"},  # encoder will compress to JPEG
+        lores={"size": (1280, 720)},
+        display="lores"                  # use the lores stream for preview
+    )
+    picam.configure(config)
+
+    # Optional: quality knob
+    picam.options["quality"] = 100 # Adjust quality as needed
+
+    # Auto exposure / white balance (or set manual if you prefer)
+    picam.set_controls({
+        "AeEnable": True,
+        "AwbEnable": True,
+        "AfMode": focus_mode,
+        "AfSpeed": controls.AfSpeedEnum.Fast,
+        "LensPosition": lp,
+        "AnalogueGain": 1.0,
+
+    })
+
+    picam.start()
+
+    picam.set_controls({"LensPosition": lp+0.5})
+    time.sleep(0.5)  # let focus and AE/AWB settle at further position
+    for _ in range(3):
+        picam.set_controls({"LensPosition": lp})
+        time.sleep(0.5)  # let focus and AE/AWB settle
+
+    arr_yuv = picam.capture_array("main")  # shape: (height, width, channels)
+
+    
+    # Try I420 first (Y then U then V). If colors look wrong, use YV12.
+    arr = cv2.cvtColor(arr_yuv, cv2.COLOR_YUV2RGB_I420)
+
+    print("got image")
     # Flip horizontally in place
-    arr[:] = arr[:, ::-1, :]
+    arr = arr[:, ::-1] 
 
     img_h, img_w = arr.shape[:2]
 
@@ -178,11 +384,16 @@ def get_image():
             abort(400, "ROI is outside image bounds.")
         arr = arr[y:y2, x:x2]
 
-    img = Image.fromarray(arr).convert("RGB")
+
+    img = Image.fromarray(arr, mode="RGB")
+    print("Sending image")
     buf = io.BytesIO()
+    print("made buffer")
     img.save(buf, format="JPEG", quality=90)
+    print("wrote to buffer")
     buf.seek(0)
-    return send_file(buf, mimetype="image/jpeg")
+    
+    return send_file(buf, mimetype="image/jpg")
 
 
 
@@ -190,28 +401,37 @@ def get_image():
 def stream():
     res = parse_res_from_request()
     roi = parse_roi_from_request()  # Parse ROI from query parameters
+    focus_mode, lp = parse_focus_from_request()
 
     picam.stop()
     if res:
         width, height = res
     elif roi:
-        width, height =  4056, 3040
+        width, height =  width_max, height_max
     else:
         width, height = 1280, 720
 
-    config = picam.create_preview_configuration(main={"size": (width, height)})
+    config = picam.create_still_configuration(
+        main={"size": (width, height), "format": "YUV420"},  # encoder will compress to JPEG
+        lores={"size": (1280, 720)},
+        display="lores"                  # use the lores stream for preview
+    )
     picam.configure(config)
     # Enable auto controls
     picam.set_controls({
         "AeEnable": True,       # Auto Exposure
         "AwbEnable": True,      # Auto White Balance
-        "AnalogueGain": 1.0
+        "AnalogueGain": 1.0,
+        "LensPosition": lp,
+        "AfMode": focus_mode,            # Auto Focus
     })
     picam.start()
 
     def generate():
         while True:
             arr = picam.capture_array("main")
+            # Try I420 first (Y then U then V). If colors look wrong, use YV12.
+            arr = cv2.cvtColor(arr, cv2.COLOR_YUV2RGB_I420)
             # Flip horizontally in place
             arr[:] = arr[:, ::-1, :]
 
@@ -229,103 +449,52 @@ def stream():
 
             time.sleep(0.033)  # Adjust frame rate as needed
 
-    return Response(generate(), mimetype="multipart/x-mixed-replace; boundary=frame")
-
-@app.route("/longexposure")
-def get_long_exposure():
-    roi = parse_roi_from_request()
-
-    print(roi)
-
-    picam.stop()
-    width =  4056
-    height = 3040
-    config = picam.create_still_configuration(main={"size": (width, height)})
-    picam.configure(config)
-    picam.start()
-    picam.set_controls({"AeEnable": False})
-    picam.set_controls({"ExposureTime": 100000000, "AnalogueGain": 8.0})
-
-
-    arr = picam.capture_array("main")  # shape: (height, width, channels)
-    
-    # Flip horizontally in place
-    arr[:] = arr[:, ::-1, :]
-
-    img_h, img_w = arr.shape[:2]
-
-    if roi:
-        x, y, w, h = roi
-        if w <= 0 or h <= 0:
-            abort(400, "Width and height must be positive.")
-        # clamp coordinates to image bounds
-        x = max(0, x)
-        y = max(0, y)
-        x2 = min(img_w, x + w)
-        y2 = min(img_h, y + h)
-        if x >= x2 or y >= y2:
-            abort(400, "ROI is outside image bounds.")
-        arr = arr[y:y2, x:x2]
-
-    img = Image.fromarray(arr).convert("RGB")
-    buf = io.BytesIO()
-    img.save(buf, format="JPEG", quality=90)
-    buf.seek(0)
-    return send_file(buf, mimetype="image/jpeg")
-
-@app.route("/greenred")
-def get_lab_green_red():
-    
-    # ---- Picamera2 setup: ISP processes to RGB888 ----
-    # Step 1: Capture image
-    picam.stop()
-    width, height = 4056, 3040  # You can change this to full resolution if needed
-    config = picam.create_preview_configuration(main={"size": (width, height), "format": "RGB888"})
-    picam.configure(config)
-    # Enable auto controls
-    picam.set_controls({
-        "AeEnable": True,       # Auto Exposure
-        "AwbEnable": True,      # Auto White Balance
-        "AnalogueGain": 1.0
-    })
-    picam.start()
-
-    rgb = picam.capture_array()  # shape (H, W, 3), dtype=uint8, sRGB-like
-    
-    # OpenCV expects RGB in uint8; returns L,a,b also in uint8 by default.
-    img_rgb = Image.fromarray(rgb, mode="RGB")
-    img_lab = img_rgb.convert("LAB")
-
-    a_channel_img = img_lab.split()[1]
-    
-
-
-    # Save to JPEG and return as grayscale
-    buf = io.BytesIO()
-    a_channel_img.save(buf, format="PNG", optimize=True, compress_level=6)
-    buf.seek(0)
-    return send_file(buf, mimetype="image/png")
-   
+    return Response(generate(), mimetype="multipart/x-mixed-replace; boundary=frame") 
 
 
 @app.route("/markers")
 def get_markers():
-    import numpy as np
+    roi = parse_roi_from_request()
+    width, height = parse_res_from_request()
+    focus_mode, lp = parse_focus_from_request()
 
-    # Step 1: Capture image
     picam.stop()
-    width, height = 4056, 3040  # You can change this to full resolution if needed
-    config = picam.create_preview_configuration(main={"size": (width, height)})
+
+    # Create a full-res still configuration
+    config = picam.create_still_configuration(
+        main={"size": (width, height), "format": "YUV420"},  # encoder will compress to JPEG
+        lores={"size": (1280, 720)},
+        display="lores"                  # use the lores stream for preview
+    )
     picam.configure(config)
-    # Enable auto controls
+
+    # Optional: quality knob
+    picam.options["quality"] = 100 # Adjust quality as needed
+
+    # Auto exposure / white balance (or set manual if you prefer)
     picam.set_controls({
-        "AeEnable": True,       # Auto Exposure
-        "AwbEnable": True,      # Auto White Balance
-        "AnalogueGain": 1.0
+        "AeEnable": True,
+        "AwbEnable": True,
+        "AfMode": focus_mode,
+        "AfSpeed": controls.AfSpeedEnum.Fast,
+        "LensPosition": lp,
+        "AnalogueGain": 1.0,
+
     })
+
     picam.start()
 
-    arr = picam.capture_array("main")  # shape: (height, width, channels)
+    picam.set_controls({"LensPosition": lp+0.5})
+    time.sleep(0.5)  # let focus and AE/AWB settle at further position
+    for _ in range(3):
+        picam.set_controls({"LensPosition": lp})
+        time.sleep(0.5)  # let focus and AE/AWB settle
+
+    arr_yuv = picam.capture_array("main")  # shape: (height, width, channels)
+
+    # Try I420 first (Y then U then V). If colors look wrong, use YV12.
+    arr = cv2.cvtColor(arr_yuv, cv2.COLOR_YUV2RGB_I420)
+
     # Flip horizontally in place
     arr[:] = arr[:, ::-1, :]
     img_h, img_w = arr.shape[:2]
