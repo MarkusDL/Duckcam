@@ -18,7 +18,7 @@
 ### Requirements
 
 - Raspberry Pi (tested on Pi 4)
-- Raspberry Pi Camera Module (e.g., HQ Camera)
+- Raspberry Pi Hawk Eye Camera Module
 - Python 3.9+
 - Picamera2
 - Flask
@@ -26,6 +26,10 @@
 
 
 ### Installation
+
+Follow the software install guide on Arducam to install the special version of libcamera and kernel [https://docs.arducam.com/Raspberry-Pi-Camera/Native-camera/64MP-Hawkeye/#hardware-connection](https://docs.arducam.com/Raspberry-Pi-Camera/Native-camera/64MP-Hawkeye/#step-2-install-core-software-and-drivers)
+
+
 ```bash
 sudo apt install python3-picamera2 python3-opencv python3-numpy python3-pil
 git clone https://github.com/MarkusDL/duckcam.git
