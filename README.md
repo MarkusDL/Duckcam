@@ -29,6 +29,7 @@
 
 Follow the software install guide on Arducam to install the special version of libcamera and kernel [https://docs.arducam.com/Raspberry-Pi-Camera/Native-camera/64MP-Hawkeye/#hardware-connection](https://docs.arducam.com/Raspberry-Pi-Camera/Native-camera/64MP-Hawkeye/#step-2-install-core-software-and-drivers)
 
+When this is done, continue the installation steps:
 
 ```bash
 sudo apt install python3-picamera2 python3-opencv python3-numpy python3-pil
